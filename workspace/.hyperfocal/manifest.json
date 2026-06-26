@@ -1,0 +1,23 @@
+{
+  "cluster": {
+    "name": "prime-rl-test",
+    "region": "us-west-2"
+  },
+  "deployment": {
+    "helmRelease": "prime-rl-test",
+    "namespace": "default"
+  },
+  "paths": {
+    "checkpointDir": "/data/outputs/run_default/broadcasts",
+    "finalCheckpoint": "/data/outputs/run_default/broadcasts/step_20"
+  },
+  "services": {
+    "inference": {
+      "url": "http://prime-rl-test-inference:8000",
+      "modelName": "PrimeIntellect/Qwen3-0.6B-Reverse-Text-SFT"
+    }
+  },
+  "training": {
+    "targetSteps": 20
+  }
+}

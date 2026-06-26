@@ -1,0 +1,29 @@
+# Hyperfocal Environment Configuration
+# This file configures the env-orchestrator for rollouts and local testing.
+
+version: "1.0"
+
+environment:
+  name: prime-rl
+  description: "Distributed RL trainer implementation and EKS deployment"
+
+# Path configuration for EC2 instances
+# These paths are relative to paths.root
+paths:
+  root: /hyperfocal/env
+  environmentDist: environment/dist
+  workspace: workspace
+
+# Agent configuration
+agent:
+  # Whether the agent should have AWS access
+  # Set to true if your environment needs to deploy AWS resources
+  awsAccess: true
+  permissionsMode: linux-user
+  # Model is configured by env-orchestrator defaults
+  # Uncomment to override: defaultModel: claude-sonnet-4-20250514
+
+# Output manifest configuration
+# Agents can declare deployment details in .hyperfocal/manifest.json
+output:
+  schemaFile: environment/manifest-schema.json

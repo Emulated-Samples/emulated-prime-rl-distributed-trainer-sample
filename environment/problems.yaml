@@ -1,0 +1,104 @@
+# Problem definitions for prime-rl Kubernetes deployment
+# Each problem has an id, prompt, and optional default flag
+
+- id: distributed-trainer
+  default: false
+  prompt: |
+    # Implement and Deploy Distributed RL Trainer With Weight Sync
+
+    Build the training loop for a distributed reinforcement learning system using GRPO
+    (Group Relative Policy Optimization), implement the trainer-side weight
+    synchronization surfaces it depends on, and deploy the result to an EKS cluster.
+
+    ## What's Already Running
+
+    - EKS cluster `prime-rl-test` in us-west-2 with 1 CPU node + 2 GPU nodes
+    - NVIDIA GPU Operator installed, GPUs allocatable
+    - kubectl, helm, eksctl, and AWS CLI are configured
+    - AWS credentials are available in your environment
+
+    ## What You Need To Do
+
+    ### 1. Implement the trainer and weight-sync stubs
+
+    Several files under `src/prime_rl/trainer/rl/`, `src/prime_rl/transport/`,
+    `src/prime_rl/trainer/rl/broadcast/`, and `src/prime_rl/trainer/` raise
+    `NotImplementedError`. Implement them. Read the surrounding code in this
+    repository (`base.py`, `config.py`, `runs.py`, `world.py`,
+    `trainer/sft/train.py`, and the unit tests under `tests/unit/`) for shape and
+    integration points; the contracts you need to honor live there.
+
+    GRPO requirements:
+    - Compute log probability ratios between trainer and inference policies
+    - Apply token-level and geometric (sequence-level) masking based on the ratio
+      thresholds defined in `LossConfig`
+    - Scale the loss by advantage values from the orchestrator
+    - Support optional teacher KL distillation
+
+    `compute_loss` operates on packed per-sequence lists of tensors, not one
+    rectangular batch tensor.
+
+    ### 2. Deploy to EKS
+
+    - Set up EFS-backed shared storage at `/data` (CSI driver, StorageClass,
+      PersistentVolume, PersistentVolumeClaim, access point for UID/GID 1000)
+    - Deploy the chart in `k8s/prime-rl/`. The chart supports a
+      `trainer.sourceOverride` mechanism that mounts a ConfigMap of your edited
+      workspace files into the trainer pod and copies them into `/app/src/prime_rl/`
+      at pod start. Without it, the pod runs the unmodified image source. The
+      chart's `values.yaml` documents the expected ConfigMap layout.
+    - Verify all three pods (orchestrator, inference, trainer) reach Running
+
+    ## AWS Credentials
+
+    Refresh AWS credentials from `{{ aws_credentials_path }}` before running AWS commands.
+
+    ## Output Manifest
+
+    Write `.hyperfocal/manifest.json` with the deployment details tests should verify.
+
+    {{ output_schema_description }}
+
+    Example:
+    {{ output_schema_example }}
+
+    ## Architecture
+
+    Three-pod async system:
+    - **Orchestrator** (CPU node): Collects rollouts, computes advantages, sends batches
+    - **Inference** (GPU node): Serves the model for rollout generation
+    - **Trainer** (GPU node): Receives batches, computes loss, updates weights, broadcasts
+
+    ## Success Criteria
+
+    Training completes 20 steps on EKS using your deployed trainer and weight-sync
+    source, writes final weights to `/data/outputs/run_default/broadcasts/step_20`,
+    and the trained checkpoint passes evaluation.
+
+- id: distributed-trainer-hard
+  default: true
+  prompt: |
+    Build the training loop for a distributed reinforcement learning system using GRPO
+    (Group Relative Policy Optimization), implement the trainer-side weight synchronization
+    surfaces it depends on, and deploy the result to an EKS cluster.
+
+    These resources are already running:
+    - EKS cluster `prime-rl-test` in us-west-2 with 1 CPU node + 2 GPU nodes
+    - NVIDIA GPU Operator installed, GPUs allocatable
+    - kubectl, helm, eksctl, and AWS CLI are configured
+    - AWS credentials are available in your environment
+
+    For your GRPO implementation, we want importance ratio masking and to support optional teacher KL distillation.
+    Once we implement transport, broadcast, and checkpoint synchronization as well, don't forget to:
+    - Set up shared storage (EFS) so all pods can read/write training data and checkpoints
+    - Deploy the three-pod system using the Helm chart in k8s/prime-rl/
+    - Verify all components are running and communicating
+
+    Refresh AWS credentials from `{{ aws_credentials_path }}` before running AWS commands.
+
+    Once you're done, write `.hyperfocal/manifest.json` with the deployment details tests should verify.
+
+    {{ output_schema_description }}
+
+    Example:
+    {{ output_schema_example }}

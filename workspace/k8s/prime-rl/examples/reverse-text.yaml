@@ -1,0 +1,59 @@
+# Values for reverse_text example
+# Small model (Qwen3-0.6B) - runs on single consumer GPU
+
+config:
+  example: "reverse-text"
+
+image:
+  # Setup rewrites this to an evaluation runtime image in ECR.
+  # Do not replace it with a public image; trainer code is supplied via sourceOverride.
+  repository: primeintellect/prime-rl
+  tag: "commit-f00925c"
+
+# Orchestrator - no GPU needed
+orchestrator:
+  enabled: true
+  autoStart: true
+  command: >-
+    mkdir -p /app/examples/reverse_text/rl &&
+    printf 'batch_size = 128\nrollouts_per_example = 16\nseq_len = 2048\nmax_steps = 20\n\n[model]\nname = "PrimeIntellect/Qwen3-0.6B-Reverse-Text-SFT"\n\n[sampling]\nmax_tokens = 128\n\n[[env]]\nid = "reverse-text"\n' > /app/examples/reverse_text/rl/orch.toml &&
+    uv run orchestrator @ /app/examples/reverse_text/rl/orch.toml --output-dir /data/outputs/run_default --client.base-url $INFERENCE_URL ; sleep infinity
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+
+# Inference - 1 GPU
+inference:
+  enabled: true
+  autoStart: true
+  command: >-
+    mkdir -p /app/examples/reverse_text/rl &&
+    printf '[model]\nname = "PrimeIntellect/Qwen3-0.6B-Reverse-Text-SFT"\n' > /app/examples/reverse_text/rl/infer.toml &&
+    uv run inference @ /app/examples/reverse_text/rl/infer.toml ; sleep infinity
+  gpu:
+    enabled: true
+    count: 1
+  resources:
+    requests:
+      memory: "4Gi"
+      cpu: "1"
+
+# Trainer - 1 GPU
+trainer:
+  enabled: true
+  sourceOverride:
+    enabled: false
+    configMapName: prime-rl-trainer-source
+  autoStart: true
+  command: >-
+    mkdir -p /app/examples/reverse_text/rl &&
+    printf 'max_steps = 20\n\n[model]\nname = "PrimeIntellect/Qwen3-0.6B-Reverse-Text-SFT"\n\n[optim]\nlr = 3e-6\n' > /app/examples/reverse_text/rl/train.toml &&
+    uv run trainer @ /app/examples/reverse_text/rl/train.toml --output-dir /data/outputs ; sleep infinity
+  gpu:
+    enabled: true
+    count: 1
+  resources:
+    requests:
+      memory: "4Gi"
+      cpu: "1"
